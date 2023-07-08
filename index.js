@@ -1,6 +1,9 @@
 const express = require('express');
 const cookieparser = require('cookie-parser');
+const env = require('./config/enviroment');
+const logger = require('morgan');
 const app = express();
+require('./config/view-helpers')(app);
 const path = require('path');
 const port = 8000;
 const expresslayouts = require('express-ejs-layouts');
@@ -21,19 +24,22 @@ const chatSocket = require('./config/chat_sockets').chatSocket(chatServer);
 chatServer.listen(5000);
 console.log("Chat server listening on 5000");
 // use express router
+app.use(logger(env.morgan.mode, env.morgan.options));
 app.use(express.urlencoded());
 app.use(cookieparser());
 app.set('layout extractStyles', true);
 app.set('layout extractScripts', true);
 
-app.use(sassMiddleware({
-    src : './assets/scss',
-    dest : './assets/css',
-    debug : true,
-    outputstyle :'extended',
-    prefix : '/css'
-}));
-app.use(express.static("./assets"));
+if(env.name == 'development'){
+    app.use(sassMiddleware({
+        src : path.join(__dirname, env.asset_path, '/scss'),
+        dest : path.join(__dirname, env.asset_path, '/css'),
+        debug : true,
+        outputstyle :'extended',
+        prefix : '/css'
+    }));
+}
+app.use(express.static(env.asset_path));
 app.use('/upload', express.static(__dirname + '/upload'));
 app.use(expresslayouts);
 // app.use('/', require('./routes/index2'));
@@ -41,9 +47,10 @@ app.use(expresslayouts);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
+
 app.use(session({
     name: 'codeial',
-    secret: 'blahsomething',
+    secret: env.session_cookie_key,
     saveUninitialized: false,
     resave: false,
     cookie : {
